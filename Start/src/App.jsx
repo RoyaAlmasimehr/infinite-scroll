@@ -1,29 +1,53 @@
+import { useEffect } from "react";
 import pizza from "./assets/pizza.jpg";
-import {useEffect, useState} from "react"
 import Comment from "./components/Comment";
+import { useState, useRef } from "react";
+
 function App() {
+  const [comments, setComments] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [page, setPage] = useState(1);
+  const [lastElement, setLastElement] = useState(null);
 
+  const fetchData = async () => {
+    setLoading(true);
+    const response = await fetch(
+      "https://react-mini-projects-api.classbon.com/Comments/" + page
+    );
+    const data = await response.json();
 
-  const[comments,setComments]=useState([])
-  const[loading,setLoading]=useState(false)
-const [lastElement,setLastElement]=useState(null)
+    setLoading(false);
+    data.length == 0
+      ? setLastElement(null)
+      : setComments((oldData) => [...oldData, ...data]);
+  };
 
-  const fetchData =async()=>{
-setLoading(true)
-const response = await fetch(
-  "https://react-mini-projects-api.classbon.com/Comments/1"
-);
+  const observerRef = useRef(null);
 
-const data =await response.json()
-setComments(data)
-setLoading(false)
+  useEffect(() => {
+    observerRef.current = new IntersectionObserver((entries) => {
+      console.log(entries.length);
+      if (entries[0].isIntersecting) {
+        setPage((currentPage) => currentPage + 1);
+      }
+    });
+  }, []);
 
-  }
+  useEffect(() => {
+    fetchData();
+  }, [page]);
 
-
-  useEffect(()=>{
-fetchData()
-  },[])
+  useEffect(() => {
+    const currentObserver = observerRef.current;
+    if (lastElement) {
+      currentObserver.observe(lastElement);
+    }
+    return () => {
+      if (lastElement) {
+        currentObserver.unobserve(lastElement);
+      }
+    };
+  }, [lastElement]);
 
   return (
     <div className="container pt-5">
@@ -84,10 +108,12 @@ fetchData()
       <div className="row">
         <div className="col-12 pt-5">
           {comments.map((comment) => (
-            <Comment key={comment.id} {...comment} ref={setLastElement} />
+            <div key={comment.id} ref={setLastElement}>
+              <Comment {...comment} />
+            </div>
           ))}
           {loading && (
-            <div className="d-flex justify-content-center">
+            <div className="d-flex justify-content-center my-5">
               <div className="spinner-border"></div>
             </div>
           )}
